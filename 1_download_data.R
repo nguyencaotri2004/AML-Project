@@ -1,75 +1,130 @@
 # 1_download_data.R
-# Elliptic++ Dataset Validator
-# ─────────────────────────────────────────────────────────────────
-# Elliptic++ is NOT on Kaggle. Download manually from Google Drive:
+# ══════════════════════════════════════════════════════════════════════════════
+# KIỂM TRA DỮ LIỆU — Elliptic++ Dataset (8 files bắt buộc)
+# ══════════════════════════════════════════════════════════════════════════════
+# Dự án: Wallet-Level AML Detection
+# Dataset: Elliptic++ (KHÔNG có trên Kaggle)
+#
+# Tải thủ công từ Google Drive:
 #   https://drive.google.com/drive/folders/1MRPXz79Lu_JGLlJ21MDfML44dKN9R08l
 #
-# Place all CSV files inside:  d:/dsr/Dataset/
-# Then run this script to validate everything is in place.
-# ─────────────────────────────────────────────────────────────────
+# Đặt tất cả file CSV vào:  d:/dsr/Dataset/
+# Sau đó chạy script này để kiểm tra đủ 8 files chưa.
+# ══════════════════════════════════════════════════════════════════════════════
 
 DATASET_DIR <- "Dataset"
 
-required_tx <- c(
-  "txs_features.csv",
-  "txs_classes.csv",
-  "txs_edgelist.csv"
+# Tất cả 8 files bắt buộc cho dự án
+REQUIRED_FILES <- list(
+
+  # ── NHÓM 1: WALLET (Dùng cho mô hình chính — Wallet-Level AML) ──────────────
+  "wallets_features_classes_combined.csv" = list(
+    group = "WALLET",
+    desc  = "55 behavioral features + label của 822K wallets",
+    min_mb = 200
+  ),
+  "wallets_classes.csv" = list(
+    group = "WALLET",
+    desc  = "Label (illicit/licit) của từng wallet — dùng để validate",
+    min_mb = 5
+  ),
+  "wallets_features.csv" = list(
+    group = "WALLET",
+    desc  = "Features wallet theo time step (dự phòng / cross-check)",
+    min_mb = 100
+  ),
+
+  # ── NHÓM 2: TRANSACTION (Dùng để tính TX Risk Score) ─────────────────────────
+  "txs_features.csv" = list(
+    group = "TX",
+    desc  = "183 features của 203K transactions",
+    min_mb = 100
+  ),
+  "txs_classes.csv" = list(
+    group = "TX",
+    desc  = "Label (illicit/licit) của từng transaction",
+    min_mb = 1
+  ),
+  "txs_edgelist.csv" = list(
+    group = "TX",
+    desc  = "Cạnh tx→tx (mạng giao dịch), 234K edges",
+    min_mb = 1
+  ),
+
+  # ── NHÓM 3: BIPARTITE GRAPH (Wallet ↔ Transaction) ────────────────────────────
+  "AddrTx_edgelist.csv" = list(
+    group = "BIPARTITE",
+    desc  = "address→txId (wallet gửi tiền VÀO tx), 477K edges",
+    min_mb = 5
+  ),
+  "TxAddr_edgelist.csv" = list(
+    group = "BIPARTITE",
+    desc  = "txId→address (tx gửi tiền RA wallet), 837K edges",
+    min_mb = 5
+  )
 )
 
-optional_wallet <- c(
-  "wallets_features.csv",
-  "wallets_classes.csv",
-  "AddrTx_edgelist.csv",
-  "TxAddr_edgelist.csv"
-)
-
-cat("=======================================================\n")
-cat("  Elliptic++ Dataset Validator\n")
-cat("=======================================================\n\n")
+# ── BANNER ────────────────────────────────────────────────────────────────────
+cat("╔══════════════════════════════════════════════════════╗\n")
+cat("║  Wallet-Level AML Detection — Kiểm tra Dataset      ║\n")
+cat("╚══════════════════════════════════════════════════════╝\n\n")
 
 if (!dir.exists(DATASET_DIR)) {
   stop(paste0(
-    "Directory '", DATASET_DIR, "' not found!\n",
-    "Download from: https://drive.google.com/drive/folders/1MRPXz79Lu_JGLlJ21MDfML44dKN9R08l\n",
-    "Then place all CSV files under: ", normalizePath(DATASET_DIR, mustWork = FALSE)
+    "Không tìm thấy thư mục '", DATASET_DIR, "'\n",
+    "Tải dataset từ: https://drive.google.com/drive/folders/1MRPXz79Lu_JGLlJ21MDfML44dKN9R08l\n",
+    "Đặt tất cả file CSV vào: ", normalizePath(DATASET_DIR, mustWork=FALSE)
   ))
 }
 
-cat("Checking directory:", normalizePath(DATASET_DIR), "\n\n")
+cat(sprintf("Thư mục dataset: %s\n\n", normalizePath(DATASET_DIR)))
 
-# ── Check required transaction files ──────────────────────────────
-cat("Phase 1 — Transaction Files (Required):\n")
-all_ok <- TRUE
-for (fname in required_tx) {
-  fpath <- file.path(DATASET_DIR, fname)
-  if (file.exists(fpath)) {
-    mb <- round(file.info(fpath)$size / 1024 / 1024, 0)
-    cat(sprintf("  [OK] %-35s (%d MB)\n", fname, mb))
-  } else {
-    cat(sprintf("  [MISSING] %s\n", fname))
-    all_ok <- FALSE
+# ── CHECK TỪNG FILE ───────────────────────────────────────────────────────────
+groups   <- c("WALLET", "TX", "BIPARTITE")
+grp_label <- c(
+  WALLET    = "NHÓM 1 — WALLET (Mô hình chính)",
+  TX        = "NHÓM 2 — TRANSACTION (TX Risk Score)",
+  BIPARTITE = "NHÓM 3 — BIPARTITE GRAPH (Wallet ↔ TX)"
+)
+
+all_ok   <- TRUE
+total_mb <- 0
+
+for (grp in groups) {
+  cat(sprintf("📁 %s\n", grp_label[grp]))
+  for (fname in names(REQUIRED_FILES)) {
+    info <- REQUIRED_FILES[[fname]]
+    if (info$group != grp) next
+    fpath <- file.path(DATASET_DIR, fname)
+    if (file.exists(fpath)) {
+      mb  <- round(file.info(fpath)$size / 1024 / 1024, 0)
+      ok  <- mb >= info$min_mb
+      tag <- if (ok) "[OK]" else "[TOO SMALL?]"
+      cat(sprintf("  %s %-43s %4d MB\n", tag, fname, mb))
+      cat(sprintf("       → %s\n", info$desc))
+      total_mb <- total_mb + mb
+      if (!ok) all_ok <- FALSE
+    } else {
+      cat(sprintf("  [MISSING] %-43s\n", fname))
+      cat(sprintf("       → %s\n", info$desc))
+      all_ok <- FALSE
+    }
   }
+  cat("\n")
 }
 
-# ── Check optional wallet files ────────────────────────────────────
-cat("\nPhase 2 — Wallet/Actor Files (Optional):\n")
-wallet_ok <- TRUE
-for (fname in optional_wallet) {
-  fpath <- file.path(DATASET_DIR, fname)
-  if (file.exists(fpath)) {
-    mb <- round(file.info(fpath)$size / 1024 / 1024, 0)
-    cat(sprintf("  [OK] %-35s (%d MB)\n", fname, mb))
-  } else {
-    cat(sprintf("  [--] %-35s (not found, optional)\n", fname))
-    wallet_ok <- FALSE
-  }
-}
+# ── KẾT QUẢ ──────────────────────────────────────────────────────────────────
+cat(sprintf("Tổng dung lượng: ~%d MB\n\n", total_mb))
 
-cat("\n")
 if (all_ok) {
-  cat("All required files present!\n")
-  cat("  -> Next: Rscript R/2_preprocessing.R\n")
-  if (wallet_ok) cat("  -> Wallet data also available for Phase 2.\n")
+  cat("╔══════════════════════════════════════════════════════╗\n")
+  cat("║  ✅ ĐỦ 8 FILES — SẴN SÀNG TIỀN XỬ LÝ               ║\n")
+  cat("╚══════════════════════════════════════════════════════╝\n")
+  cat("  Bước tiếp theo: Rscript R/2_tien_xu_ly_du_lieu.R\n\n")
 } else {
-  stop("Missing required files. Please download from Google Drive.")
+  cat("╔══════════════════════════════════════════════════════╗\n")
+  cat("║  ❌ THIẾU FILE — Vui lòng tải đủ trước khi tiếp tục ║\n")
+  cat("╚══════════════════════════════════════════════════════╝\n")
+  cat("  Tải từ: https://drive.google.com/drive/folders/1MRPXz79Lu_JGLlJ21MDfML44dKN9R08l\n\n")
+  stop("Thiếu file dữ liệu. Không thể tiếp tục.")
 }
