@@ -1,0 +1,40 @@
+# ── Large Data (không push lên GitHub) ──────────────────────────────
+Dataset/
+processed/
+
+# ── Model binary files (too large) ──────────────────────────────────
+outputs/xgboost_model.bin
+outputs/lr_model.bin
+outputs/rf_model.rds
+
+# ── Outputs nhỏ thì giữ (metrics, charts) ───────────────────────────
+# outputs/metrics.json      ← GIỮ LẠI
+# outputs/temporal_results.csv  ← GIỮ LẠI
+# outputs/model_thresholds.json ← GIỮ LẠI
+!outputs/metrics.json
+!outputs/temporal_results.csv
+!outputs/model_thresholds.json
+!outputs/charts/
+
+# ── R artifacts ──────────────────────────────────────────────────────
+*.Rhistory
+*.RData
+*.Rproj.user/
+.Rproj.user
+
+# ── Python artifacts ─────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+env/
+
+# ── OS artifacts ─────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs / Temp ──────────────────────────────────────────────────────
+*.log
+*.tmp
+C:/tmp/
